@@ -61,6 +61,8 @@ npm run setup
 
 Copy `server/.env.example` to `server/.env` and fill in your keys.
 
+`npm run setup` never overwrites an existing `server/config.json`. On first install it copies `server/config.json.example` (blank defaults).
+
 ### Running
 
 **Daily use (one terminal, hot reload):**

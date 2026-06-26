@@ -56,11 +56,33 @@ export default function App() {
   const [calendarEnabled, setCalendarEnabled] = useState(true);
   const [calendarAutoWrite, setCalendarAutoWrite] = useState(true);
   const [draftMode, setDraftMode] = useState(true);
+  const [sendDelayMinSec, setSendDelayMinSec] = useState(0);
+  const [sendDelayMaxSec, setSendDelayMaxSec] = useState(0);
   const [calendarStatus, setCalendarStatus] = useState({
     configured: false,
     connected: false,
   });
   const [activityFilter, setActivityFilter] = useState(null);
+  const [beeperStatus, setBeeperStatus] = useState("loading");
+
+  const loadBeeperChats = useCallback(async () => {
+    setBeeperStatus("loading");
+    try {
+      const beeperRes = await fetch("/api/beeper-chats");
+      if (!beeperRes.ok) {
+        setBeeperStatus("error");
+        return;
+      }
+      const beeperData = await beeperRes.json();
+      const chats = Array.isArray(beeperData)
+        ? beeperData
+        : beeperData?.items || [];
+      setAvailableChats(chats);
+      setBeeperStatus(chats.length > 0 ? "ok" : "empty");
+    } catch {
+      setBeeperStatus("error");
+    }
+  }, []);
 
   const chatNameById = useMemo(() => {
     const map = {};
@@ -97,32 +119,33 @@ export default function App() {
     async function initDashboard() {
       try {
         const configRes = await fetch("/api/config");
-        const configData = await configRes.json();
-        setWatchedChats(configData.watchedChats || []);
-        setBackgroundInfo(configData.backgroundInfo || "");
-        setChatPersonalities(configData.chatPersonalities || {});
-        setCalendarEnabled(configData.calendarEnabled !== false);
-        setCalendarAutoWrite(configData.calendarAutoWrite !== false);
-        setDraftMode(configData.draftMode !== false);
-
-        try {
-          const calRes = await fetch("/api/calendar/status");
-          if (calRes.ok) setCalendarStatus(await calRes.json());
-        } catch {
-          // server offline
+        if (configRes.ok) {
+          const configData = await configRes.json();
+          setWatchedChats(configData.watchedChats || []);
+          setBackgroundInfo(configData.backgroundInfo || "");
+          setChatPersonalities(configData.chatPersonalities || {});
+          setCalendarEnabled(configData.calendarEnabled !== false);
+          setCalendarAutoWrite(configData.calendarAutoWrite !== false);
+          setDraftMode(configData.draftMode !== false);
+          setSendDelayMinSec(Math.max(0, Number(configData.sendDelayMinSec) || 0));
+          setSendDelayMaxSec(Math.max(0, Number(configData.sendDelayMaxSec) || 0));
         }
-
-        const beeperRes = await fetch("/api/beeper-chats");
-        if (beeperRes.ok) {
-          const beeperData = await beeperRes.json();
-          setAvailableChats(Array.isArray(beeperData) ? beeperData : []);
-        }
-      } finally {
-        setLoading(false);
+      } catch {
+        // config load failed
       }
+
+      try {
+        const calRes = await fetch("/api/calendar/status");
+        if (calRes.ok) setCalendarStatus(await calRes.json());
+      } catch {
+        // calendar status optional
+      }
+
+      await loadBeeperChats();
+      setLoading(false);
     }
     initDashboard();
-  }, []);
+  }, [loadBeeperChats]);
 
   useEffect(() => {
     async function pollSimulation() {
@@ -248,6 +271,8 @@ export default function App() {
           calendarEnabled,
           calendarAutoWrite,
           draftMode,
+          sendDelayMinSec,
+          sendDelayMaxSec: Math.max(sendDelayMinSec, sendDelayMaxSec),
         }),
       });
       if (response.ok) {
@@ -258,7 +283,7 @@ export default function App() {
       setSaveStatus("Save failed");
       setTimeout(() => setSaveStatus(""), 3000);
     }
-  }, [watchedChats, backgroundInfo, chatPersonalities, calendarEnabled, calendarAutoWrite, draftMode]);
+  }, [watchedChats, backgroundInfo, chatPersonalities, calendarEnabled, calendarAutoWrite, draftMode, sendDelayMinSec, sendDelayMaxSec]);
 
   // auto-save on changes with debounce
   useEffect(() => {
@@ -276,7 +301,7 @@ export default function App() {
   // mark dirty when any setting changes
   useEffect(() => {
     setDirty(true);
-  }, [watchedChats, backgroundInfo, chatPersonalities, calendarEnabled, calendarAutoWrite, draftMode]);
+  }, [watchedChats, backgroundInfo, chatPersonalities, calendarEnabled, calendarAutoWrite, draftMode, sendDelayMinSec, sendDelayMaxSec]);
 
   // when stuff is loading
   if (loading) {
@@ -365,6 +390,40 @@ export default function App() {
           />
           Draft mode (request approval for messages before sending)
         </label>
+        <div className="delay-field">
+          <span className="delay-field-label">Reply delay (seconds)</span>
+          <p className="delay-field-hint">
+            Wait a random amount of time between min and max before sending a reply.
+            Set both to 0 to send immediately.
+          </p>
+          <div className="delay-inputs">
+            <label>
+              Min
+              <input
+                type="number"
+                min={0}
+                step={1}
+                value={sendDelayMinSec}
+                onChange={(e) =>
+                  setSendDelayMinSec(Math.max(0, Number(e.target.value) || 0))
+                }
+              />
+            </label>
+            <span className="delay-separator">to</span>
+            <label>
+              Max
+              <input
+                type="number"
+                min={0}
+                step={1}
+                value={sendDelayMaxSec}
+                onChange={(e) =>
+                  setSendDelayMaxSec(Math.max(0, Number(e.target.value) || 0))
+                }
+              />
+            </label>
+          </div>
+        </div>
       </section>
 
       <section>
@@ -373,6 +432,27 @@ export default function App() {
 
         {/* convo list */}
         <div className="chat-list">
+          {availableChats.length === 0 && (
+            <div className="chat-list-empty">
+              {beeperStatus === "loading" && <p>Loading chats from Beeper…</p>}
+              {beeperStatus === "empty" && (
+                <>
+                  <p>No chats found. Make sure Beeper Desktop is running and logged in.</p>
+                  <button type="button" className="btn btn--ghost" onClick={loadBeeperChats}>
+                    Retry
+                  </button>
+                </>
+              )}
+              {beeperStatus === "error" && (
+                <>
+                  <p>Could not load chats. Is the server running?</p>
+                  <button type="button" className="btn btn--ghost" onClick={loadBeeperChats}>
+                    Retry
+                  </button>
+                </>
+              )}
+            </div>
+          )}
           {availableChats.map((chat) => {
             const isWatched = watchedChats.includes(chat.id);
             const chatName = chat.title || chat.network || "Unknown Chat Link";

@@ -1,0 +1,10 @@
+{
+  "watchedChats": [],
+  "backgroundInfo": "",
+  "chatPersonalities": {},
+  "calendarEnabled": true,
+  "calendarAutoWrite": true,
+  "draftMode": true,
+  "sendDelayMinSec": 0,
+  "sendDelayMaxSec": 0
+}

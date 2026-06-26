@@ -309,12 +309,85 @@ label:has(input:disabled) {
 
 /* ── Chat list ── */
 
+.delay-field {
+  margin-top: 16px;
+}
+
+.delay-field-label {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--stone-800);
+  margin-bottom: 4px;
+}
+
+.delay-field-hint {
+  margin: 0 0 10px;
+  font-size: 0.8125rem;
+  color: var(--stone-500);
+  line-height: 1.45;
+}
+
+.delay-inputs {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.delay-inputs label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 0;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--stone-500);
+  cursor: default;
+  user-select: none;
+}
+
+.delay-inputs input[type="number"] {
+  width: 88px;
+  padding: 8px 10px;
+  border: 1px solid var(--stone-200);
+  border-radius: var(--radius-sm);
+  font-size: 0.875rem;
+  font-family: inherit;
+  color: var(--stone-800);
+  background: #fff;
+}
+
+.delay-inputs input[type="number"]:focus {
+  outline: none;
+  border-color: var(--stone-400);
+  box-shadow: 0 0 0 3px rgba(41, 37, 36, 0.06);
+}
+
+.delay-separator {
+  font-size: 0.8125rem;
+  color: var(--stone-500);
+  padding-bottom: 9px;
+}
+
 .chat-list {
   max-height: 400px;
   overflow-y: auto;
   border: 1px solid var(--stone-200);
   border-radius: var(--radius-md);
   background: #fff;
+}
+
+.chat-list-empty {
+  padding: 28px 20px;
+  text-align: center;
+}
+
+.chat-list-empty p {
+  margin: 0 0 12px;
+  font-size: 0.875rem;
+  color: var(--stone-500);
+  line-height: 1.5;
 }
 
 .chat-list::-webkit-scrollbar {

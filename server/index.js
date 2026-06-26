@@ -18,13 +18,48 @@ const BEEPER_URL = process.env.BEEPER_BASE_URL;
 const BEEPER_TOKEN = process.env.BEEPER_ACCESS_TOKEN;
 const CONFIG_PATH = path.join(__dirname, "config.json");
 
-// read and write into config
+const DEFAULT_CONFIG = {
+  watchedChats: [],
+  backgroundInfo: "",
+  chatPersonalities: {},
+  calendarEnabled: true,
+  calendarAutoWrite: true,
+  draftMode: true,
+  sendDelayMinSec: 0,
+  sendDelayMaxSec: 0,
+};
+
 function loadConfig() {
-  return JSON.parse(fs.readFileSync(CONFIG_PATH, "utf8"));
+  if (!fs.existsSync(CONFIG_PATH)) {
+    saveConfig({ ...DEFAULT_CONFIG });
+    return { ...DEFAULT_CONFIG };
+  }
+  try {
+    return { ...DEFAULT_CONFIG, ...JSON.parse(fs.readFileSync(CONFIG_PATH, "utf8")) };
+  } catch {
+    return { ...DEFAULT_CONFIG };
+  }
 }
 
 function saveConfig(config) {
   fs.writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2));
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function getSendDelayMs(config) {
+  const min = Math.max(0, Number(config.sendDelayMinSec) || 0);
+  const max = Math.max(min, Number(config.sendDelayMaxSec) || 0);
+  if (max <= 0) return 0;
+  const sec = min + Math.random() * (max - min);
+  return Math.round(sec * 1000);
+}
+
+async function applySendDelay(config) {
+  const ms = getSendDelayMs(config);
+  if (ms > 0) await sleep(ms);
 }
 
 const beeperHeaders = {
@@ -52,7 +87,14 @@ app.post("/api/config", (req, res) => {
     calendarEnabled,
     calendarAutoWrite,
     draftMode,
+    sendDelayMinSec,
+    sendDelayMaxSec,
   } = req.body;
+  const minDelay = Math.max(0, Number(sendDelayMinSec) || 0);
+  const maxDelay = Math.max(
+    minDelay,
+    Number(sendDelayMaxSec ?? existing.sendDelayMaxSec) || 0,
+  );
   saveConfig({
     ...existing,
     watchedChats,
@@ -61,6 +103,8 @@ app.post("/api/config", (req, res) => {
     calendarEnabled: calendarEnabled ?? existing.calendarEnabled ?? true,
     calendarAutoWrite: calendarAutoWrite ?? existing.calendarAutoWrite ?? true,
     draftMode: req.body.draftMode ?? existing.draftMode ?? true,
+    sendDelayMinSec: minDelay,
+    sendDelayMaxSec: maxDelay,
   });
   res.json({ success: true, message: "configuration synchronized" });
 });
@@ -225,12 +269,24 @@ app.get("/api/debug/messages/:chatId", async (req, res) => {
 
 app.get("/api/beeper-chats", async (req, res) => {
   try {
-    const response = await axios.get(`${BEEPER_URL}/chats/search`, {
-      params: { limit: 50 },
+    const params = { limit: 50, inbox: "primary" };
+    let response = await axios.get(`${BEEPER_URL}/chats/search`, {
+      params,
       headers: beeperHeaders,
+      timeout: 15000,
     });
-    res.json(response.data.items || []);
-  } catch {
+    let items = response.data?.items;
+    if (!Array.isArray(items) || items.length === 0) {
+      response = await axios.get(`${BEEPER_URL}/chats`, {
+        params: { limit: 50 },
+        headers: beeperHeaders,
+        timeout: 15000,
+      });
+      items = response.data?.items;
+    }
+    res.json(Array.isArray(items) ? items : []);
+  } catch (err) {
+    console.error("beeper-chats failed:", err.message);
     res.json([]);
   }
 });
@@ -374,6 +430,8 @@ async function generateVideoReply(backgroundInfo, textContent, video) {
 
 // draft actions
 async function executeApprovedDraft(chatId, draft, replyText, config) {
+  await applySendDelay(config);
+
   for (const action of draft.actions) {
     if (action.type === "reaction") {
       await axios.post(
@@ -451,6 +509,8 @@ async function processAndSendBotResponse(
   config,
   { conversationContext = "" } = {},
 ) {
+  await applySendDelay(config);
+
   const reactMatch = finalReply.match(/REACT:([^\s]+)/m); // reactions
 
   let reply = finalReply;
