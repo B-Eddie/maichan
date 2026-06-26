@@ -2,8 +2,6 @@ export default function StationPanel({
   station,
   personalityValue,
   onPersonalityChange,
-  onSave,
-  isSaving,
   onPanelInteract,
 }) {
   const stopCanvas = (e) => e.stopPropagation();
@@ -60,17 +58,6 @@ export default function StationPanel({
         onPointerDown={stopCanvas}
       />
 
-      {/* save button */}
-      <div className="sim-panel-actions">
-        <button
-          type="button"
-          className="sim-btn sim-btn-save"
-          disabled={isSaving}
-          onClick={onSave}
-        >
-          {isSaving ? "Saving…" : "Save rules"}
-        </button>
-      </div>
     </div>
   );
 }

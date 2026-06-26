@@ -112,6 +112,19 @@ function rejectDraft(chatId) {
   return draft;
 }
 
+function describeAttachments(attachments) {
+  if (!attachments || attachments.length === 0) return "";
+  const counts = {};
+  for (const a of attachments) {
+    const type = a.type || "file";
+    counts[type] = (counts[type] || 0) + 1;
+  }
+  const parts = Object.entries(counts).map(([type, count]) =>
+    count > 1 ? `${count} ${type}s` : `a ${type}`,
+  );
+  return `[sent ${parts.join(" and ")}]`;
+}
+
 function updateStationMessages(chatId, messages, stripHtml) {
   if (!stationState[chatId]) {
     stationState[chatId] = {
@@ -126,8 +139,13 @@ function updateStationMessages(chatId, messages, stripHtml) {
 
   for (const msg of messages) {
     const text = stripHtml(msg.text);
-    const hasVideo = msg.attachments?.some((a) => a.type === "video");
-    const content = text || (hasVideo ? "[video]" : null);
+    const attachmentDesc =
+      msg.attachments?.length > 0
+        ? msg.attachments.some((a) => a.type === "video")
+          ? "[video]"
+          : describeAttachments(msg.attachments)
+        : "";
+    const content = text || attachmentDesc || null;
     if (!content) continue;
 
     if (!msg.isSender && !lastIncoming) {

@@ -32,6 +32,12 @@ const beeperHeaders = {
   "Content-Type": "application/json",
 };
 
+// detect network from Beeper chat ID
+const IMESSAGE_PREFIX = "imsg##";
+function isIMessage(chatId) {
+  return typeof chatId === "string" && chatId.startsWith(IMESSAGE_PREFIX);
+}
+
 // api endpoints
 app.get("/api/config", (req, res) => {
   res.json(loadConfig());
@@ -184,10 +190,43 @@ app.post("/api/simulation/clear-alert", (req, res) => {
   res.json({ success: true });
 });
 
+// Debug endpoints to inspect Beeper API response format
+app.get("/api/debug/chats", async (req, res) => {
+  try {
+    const response = await axios.get(`${BEEPER_URL}/chats/search`, {
+      params: { limit: 50 },
+      headers: beeperHeaders,
+    });
+    res.json({ status: response.status, data: response.data });
+  } catch (err) {
+    res.status(500).json({
+      error: err.message,
+      response: err.response?.data,
+      status: err.response?.status,
+    });
+  }
+});
+
+app.get("/api/debug/messages/:chatId", async (req, res) => {
+  try {
+    const response = await axios.get(
+      `${BEEPER_URL}/chats/${encodeURIComponent(req.params.chatId)}/messages`,
+      { params: { limit: 5 }, headers: beeperHeaders },
+    );
+    res.json({ status: response.status, data: response.data });
+  } catch (err) {
+    res.status(500).json({
+      error: err.message,
+      response: err.response?.data,
+      status: err.response?.status,
+    });
+  }
+});
+
 app.get("/api/beeper-chats", async (req, res) => {
   try {
     const response = await axios.get(`${BEEPER_URL}/chats/search`, {
-      params: { limit: 15 },
+      params: { limit: 50 },
       headers: beeperHeaders,
     });
     res.json(response.data.items || []);
@@ -203,7 +242,7 @@ const processingChat = new Set();
 
 // sanitize text
 function stripHtml(text) {
-  return text?.replace(/<[^>]*>/g, "").trim() || "";
+  return text?.replace(/<[^>]*>/g, "")?.trim() || "";
 }
 
 // create history
@@ -338,7 +377,7 @@ async function executeApprovedDraft(chatId, draft, replyText, config) {
   for (const action of draft.actions) {
     if (action.type === "reaction") {
       await axios.post(
-        `${BEEPER_URL}/chats/${chatId}/messages/${draft.triggerMessageId}/reactions`,
+        `${BEEPER_URL}/chats/${encodeURIComponent(chatId)}/messages/${encodeURIComponent(draft.triggerMessageId)}/reactions`,
         { reactionKey: action.emoji },
         { headers: beeperHeaders },
       );
@@ -388,7 +427,7 @@ async function executeApprovedDraft(chatId, draft, replyText, config) {
   // actual text
   if (replyText.length > 0) {
     const sendResponse = await axios.post(
-      `${BEEPER_URL}/chats/${chatId}/messages`,
+      `${BEEPER_URL}/chats/${encodeURIComponent(chatId)}/messages`,
       { text: replyText },
       { headers: beeperHeaders },
     );
@@ -430,7 +469,7 @@ async function processAndSendBotResponse(
 
   if (reactMatch) {
     await axios.post(
-      `${BEEPER_URL}/chats/${chatId}/messages/${msgId}/reactions`,
+      `${BEEPER_URL}/chats/${encodeURIComponent(chatId)}/messages/${encodeURIComponent(msgId)}/reactions`,
       { reactionKey: reactMatch[1] },
       { headers: beeperHeaders },
     );
@@ -438,7 +477,7 @@ async function processAndSendBotResponse(
 
   if (reply.length > 0) {
     const sendResponse = await axios.post(
-      `${BEEPER_URL}/chats/${chatId}/messages`,
+      `${BEEPER_URL}/chats/${encodeURIComponent(chatId)}/messages`,
       { text: reply },
       { headers: beeperHeaders },
     );
@@ -533,20 +572,39 @@ async function generateReply(backgroundInfo, textContent, history) {
 }
 
 async function fetchChatMessages(chatId, limit = 50) {
-  const response = await axios.get(`${BEEPER_URL}/chats/${chatId}/messages`, {
+  const response = await axios.get(`${BEEPER_URL}/chats/${encodeURIComponent(chatId)}/messages`, {
     params: { limit },
     headers: beeperHeaders,
   });
   return response.data.items || [];
 }
 
+function describeAttachments(attachments) {
+  if (!attachments || attachments.length === 0) return "";
+  const counts = {};
+  for (const a of attachments) {
+    const type = a.type || "file";
+    counts[type] = (counts[type] || 0) + 1;
+  }
+  const parts = Object.entries(counts).map(([type, count]) =>
+    count > 1 ? `${count} ${type}s` : `a ${type}`,
+  );
+  return `[sent ${parts.join(" and ")}]`;
+}
+
 function formatTranscript(messages) {
   const lines = [];
   for (const msg of messages.slice().reverse()) {
     const text = stripHtml(msg.text);
-    const hasVideo = msg.attachments?.some((a) => a.type === "video");
+    const attachmentDesc =
+      msg.attachments?.length > 0
+        ? msg.attachments.some((a) => a.type === "video")
+          ? "[video]"
+          : describeAttachments(msg.attachments)
+        : "";
     let content = text;
-    if (hasVideo) content = content ? `${content} [video]` : "[sent a video]";
+    if (attachmentDesc)
+      content = content ? `${content} ${attachmentDesc}` : attachmentDesc;
     if (!content?.trim()) continue;
     const speaker = msg.isSender ? "Me" : msg.senderName || "Them";
     lines.push(`${speaker}: ${content}`);
@@ -694,11 +752,12 @@ async function monitorWatchedChats() {
       continue;
     }
 
-    // Check for videos
+    // Check for any attachment
     const videoAttachment = newestMsg.attachments?.find(
       (a) => a.type === "video",
     );
-    const hasContent = textContent || videoAttachment;
+    const anyAttachment = newestMsg.attachments?.length > 0;
+    const hasContent = textContent || anyAttachment;
 
     // only process if it's a new, processable message
     if (msgId === lastProcessedMessageId[chatId] || !hasContent) continue;
@@ -709,7 +768,12 @@ async function monitorWatchedChats() {
     processingChat.add(chatId);
 
     const incomingText =
-      stripHtml(textContent) || (videoAttachment ? "[video]" : "");
+      stripHtml(textContent) ||
+      (videoAttachment
+        ? "[video]"
+        : anyAttachment
+          ? describeAttachments(newestMsg.attachments)
+          : "");
     drafts.markNewMessage(chatId, incomingText);
 
     const personality = getPersonalityForChat(config, chatId);
@@ -739,10 +803,13 @@ async function monitorWatchedChats() {
           );
         }
       } else {
-        // normal msgs
+        // normal msgs (or non-video attachments like images)
+        const attachmentText = anyAttachment
+          ? describeAttachments(newestMsg.attachments)
+          : "";
         finalReply = await generateReply(
           enrichedPersonality,
-          textContent,
+          textContent || attachmentText,
           messages.slice(1, 10),
         );
       }

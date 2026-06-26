@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import "./App.css";
 import ConversationOffice from "./simulation/ConversationOffice";
 import DraftPanel from "./DraftPanel";
@@ -45,6 +45,8 @@ export default function App() {
   const [backgroundInfo, setBackgroundInfo] = useState("");
   const [loading, setLoading] = useState(true);
   const [saveStatus, setSaveStatus] = useState("");
+  const saveTimer = useRef(null);
+  const [dirty, setDirty] = useState(false);
   const [summaries, setSummaries] = useState({});
   const [summarizingId, setSummarizingId] = useState(null);
   const [chatPersonalities, setChatPersonalities] = useState({});
@@ -233,8 +235,8 @@ export default function App() {
     setChatPersonalities((prev) => ({ ...prev, [chatId]: value }));
   };
 
-  const handleSaveSettings = async () => {
-    setSaveStatus("Saving settings...");
+  const doSave = useCallback(async () => {
+    setSaveStatus("Saving...");
     try {
       const response = await fetch("http://localhost:5001/api/config", {
         method: "POST",
@@ -248,15 +250,33 @@ export default function App() {
           draftMode,
         }),
       });
-
       if (response.ok) {
-        setSaveStatus("Settings saved");
-        setTimeout(() => setSaveStatus(""), 3000);
+        setSaveStatus("Saved");
+        setTimeout(() => setSaveStatus(""), 2000);
       }
-    } catch (err) {
+    } catch {
       setSaveStatus("Save failed");
+      setTimeout(() => setSaveStatus(""), 3000);
     }
-  };
+  }, [watchedChats, backgroundInfo, chatPersonalities, calendarEnabled, calendarAutoWrite, draftMode]);
+
+  // auto-save on changes with debounce
+  useEffect(() => {
+    if (!dirty) return;
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => {
+      doSave();
+      setDirty(false);
+    }, 600);
+    return () => {
+      if (saveTimer.current) clearTimeout(saveTimer.current);
+    };
+  }, [dirty, doSave]);
+
+  // mark dirty when any setting changes
+  useEffect(() => {
+    setDirty(true);
+  }, [watchedChats, backgroundInfo, chatPersonalities, calendarEnabled, calendarAutoWrite, draftMode]);
 
   // when stuff is loading
   if (loading) {
@@ -297,9 +317,7 @@ export default function App() {
         <ConversationOffice
           stations={simulationStations}
           chatPersonalities={chatPersonalities}
-          isSaving={saveStatus === "Saving settings..."}
           onPersonalityChange={updateChatPersonality}
-          onSave={handleSaveSettings}
           onOpenChat={openInBeeper}
           onWalkComplete={clearWalkAlert}
         />
@@ -480,16 +498,11 @@ export default function App() {
         </div>
       </section>
       
-      <div className="save-bar">
-        <button
-          type="button"
-          onClick={handleSaveSettings}
-          className="btn btn--save"
-        >
-          Save Settings
-        </button>
-        {saveStatus && <span className="save-status">{saveStatus}</span>}
-      </div>
+      {saveStatus && (
+        <div className="save-status-bar">
+          <span className="save-status">{saveStatus}</span>
+        </div>
+      )}
     </div>
   );
 }

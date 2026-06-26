@@ -427,14 +427,23 @@ label:has(input:disabled) {
 
 /* ── Save bar ── */
 
-.save-bar {
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
-  gap: 16px;
-  padding: 48px 16px 0 0;
-  border-top: 1px solid var(--stone-200);
-  margin-top: 48px;
+.save-status-bar {
+  position: fixed;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 100;
+  background: var(--stone-800);
+  color: #fff;
+  padding: 6px 16px;
+  border-radius: 20px;
+  font-size: 0.8125rem;
+  animation: fadeIn 0.15s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateX(-50%) translateY(8px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
 }
 
 .save-status {
@@ -607,9 +616,6 @@ label:has(input:disabled) {
     height: 340px;
   }
 
-  .save-bar {
-    padding-right: 0;
-  }
 }
 
 /* ── Draft panel ── */

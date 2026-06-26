@@ -29,9 +29,7 @@ function StationBoard() {
 function OfficeScene({
   stations,
   chatPersonalities,
-  isSaving,
   onPersonalityChange,
-  onSave,
   onPanelInteract,
   controlsEnabled,
   onOpenChat,
@@ -98,9 +96,7 @@ function OfficeScene({
                   <StationPanel
                     station={station}
                     personalityValue={chatPersonalities[station.chatId] || ""}
-                    isSaving={isSaving}
                     onPersonalityChange={onPersonalityChange}
-                    onSave={onSave}
                     onPanelInteract={onPanelInteract}
                     onOpenChat={onOpenChat}
                   />
@@ -127,9 +123,7 @@ function OfficeScene({
 export default function ConversationOffice({
   stations,
   chatPersonalities,
-  isSaving,
   onPersonalityChange,
-  onSave,
   onOpenChat,
   onWalkComplete,
 }) {
@@ -141,9 +135,7 @@ export default function ConversationOffice({
         <OfficeScene
           stations={stations}
           chatPersonalities={chatPersonalities}
-          isSaving={isSaving}
           onPersonalityChange={onPersonalityChange}
-          onSave={onSave}
           onPanelInteract={setControlsEnabled}
           controlsEnabled={controlsEnabled}
           onOpenChat={onOpenChat}
