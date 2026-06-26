@@ -231,7 +231,7 @@ app.get("/api/beeper-chats", async (req, res) => {
     });
     res.json(response.data.items || []);
   } catch {
-    // beeper unavailable
+    res.json([]);
   }
 });
 
@@ -847,4 +847,17 @@ async function monitorWatchedChats() {
 // tick chat monitoring every something seconds
 setInterval(monitorWatchedChats, 2000);
 
-app.listen(5001, () => console.log("agent on 5001"));
+const CLIENT_DIST = path.join(__dirname, "../client/dist");
+if (fs.existsSync(path.join(CLIENT_DIST, "index.html"))) {
+  app.use(express.static(CLIENT_DIST));
+  app.get(/^\/(?!api).*/, (_req, res) => {
+    res.sendFile(path.join(CLIENT_DIST, "index.html"));
+  });
+}
+
+const PORT = process.env.PORT || 5001;
+app.listen(PORT, () => {
+  const hasUi = fs.existsSync(path.join(CLIENT_DIST, "index.html"));
+  console.log(`agent on http://localhost:${PORT}`);
+  if (hasUi) console.log(`dashboard at http://localhost:${PORT}`);
+});

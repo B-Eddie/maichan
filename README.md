@@ -53,26 +53,29 @@ TZ=America/Toronto
 ```
 
 ### Installation
-1. Clone this repo with `git clone <repo>`
 ```bash
+git clone <repo>
 cd maichan
-cd server && npm install
-
-# then
-cd ../client && npm install
+npm run setup
 ```
+
+Copy `server/.env.example` to `server/.env` and fill in your keys.
 
 ### Running
-Terminal 1
+
+**Daily use (one terminal, hot reload):**
 ```bash
-cd server
-node index.js
-```
-Terminal 2
-```bash
-cd client
 npm run dev
 ```
+Open http://localhost:5173 — API is proxied to the server automatically.
+
+**Single process (no Vite, good for leaving it running in the background):**
+```bash
+npm start
+```
+Open http://localhost:5001 — builds the client once, then serves everything from the server.
+
+Make sure Beeper Desktop is running before you start.
 
 
 note: currently only tested on mac + instagram/discord msgs

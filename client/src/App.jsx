@@ -96,7 +96,7 @@ export default function App() {
   useEffect(() => {
     async function initDashboard() {
       try {
-        const configRes = await fetch("http://localhost:5001/api/config");
+        const configRes = await fetch("/api/config");
         const configData = await configRes.json();
         setWatchedChats(configData.watchedChats || []);
         setBackgroundInfo(configData.backgroundInfo || "");
@@ -106,17 +106,17 @@ export default function App() {
         setDraftMode(configData.draftMode !== false);
 
         try {
-          const calRes = await fetch(
-            "http://localhost:5001/api/calendar/status",
-          );
+          const calRes = await fetch("/api/calendar/status");
           if (calRes.ok) setCalendarStatus(await calRes.json());
         } catch {
           // server offline
         }
 
-        const beeperRes = await fetch("http://localhost:5001/api/beeper-chats");
-        const beeperData = await beeperRes.json();
-        setAvailableChats(beeperData);
+        const beeperRes = await fetch("/api/beeper-chats");
+        if (beeperRes.ok) {
+          const beeperData = await beeperRes.json();
+          setAvailableChats(Array.isArray(beeperData) ? beeperData : []);
+        }
       } finally {
         setLoading(false);
       }
@@ -127,7 +127,7 @@ export default function App() {
   useEffect(() => {
     async function pollSimulation() {
       try {
-        const res = await fetch("http://localhost:5001/api/simulation");
+        const res = await fetch("/api/simulation");
         if (!res.ok) return;
         const data = await res.json();
         setSimStations(data.stations || []);
@@ -144,7 +144,7 @@ export default function App() {
   // open chat in beeper
   const openInBeeper = useCallback(async (chatId) => {
     try {
-      await fetch("http://localhost:5001/api/beeper/focus", {
+      await fetch("/api/beeper/focus", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ chatId }),
@@ -155,7 +155,7 @@ export default function App() {
   }, []);
 
   const clearWalkAlert = useCallback(async (chatId) => {
-    await fetch("http://localhost:5001/api/simulation/clear-alert", {
+      await fetch("/api/simulation/clear-alert", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ chatId }),
@@ -164,7 +164,7 @@ export default function App() {
 
   const handleApproveDraft = async (chatId, text) => {
     const res = await fetch(
-      `http://localhost:5001/api/drafts/${encodeURIComponent(chatId)}/approve`,
+      `/api/drafts/${encodeURIComponent(chatId)}/approve`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -180,7 +180,7 @@ export default function App() {
 
   const handleRejectDraft = async (chatId) => {
     await fetch(
-      `http://localhost:5001/api/drafts/${encodeURIComponent(chatId)}/reject`,
+      `/api/drafts/${encodeURIComponent(chatId)}/reject`,
       {
         method: "POST",
       },
@@ -209,7 +209,7 @@ export default function App() {
   const handleSummarize = async (chatId) => {
     setSummarizingId(chatId);
     try {
-      const response = await fetch("http://localhost:5001/api/summarize", {
+      const response = await fetch("/api/summarize", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ chatId }),
@@ -238,7 +238,7 @@ export default function App() {
   const doSave = useCallback(async () => {
     setSaveStatus("Saving...");
     try {
-      const response = await fetch("http://localhost:5001/api/config", {
+      const response = await fetch("/api/config", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -487,7 +487,7 @@ export default function App() {
           )}
           {!calendarStatus.connected && (
             <a
-              href="http://localhost:5001/api/calendar/auth"
+              href="/api/calendar/auth"
               target="_blank"
               rel="noreferrer"
               className="btn btn--link"

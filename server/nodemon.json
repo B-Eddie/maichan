@@ -1,0 +1,6 @@
+{
+  "watch": ["index.js", "calendar.js", "drafts.js"],
+  "ignore": ["config.json", "calendar-tokens.json", "node_modules"],
+  "ext": "js",
+  "delay": 400
+}
