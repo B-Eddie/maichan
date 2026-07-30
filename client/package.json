@@ -1,7 +1,7 @@
 {
-  "name": "client",
-  "private": true,
-  "version": "0.0.0",
+  "name": "maichan-dashboard",
+  "version": "0.1.0",
+  "description": "Maichan dashboard",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -9,6 +9,32 @@
     "lint": "eslint .",
     "preview": "vite preview"
   },
+  "keywords": [
+    "maichan",
+    "beeper",
+    "ai",
+    "inbox",
+    "react",
+    "threejs"
+  ],
+  "author": "B-Eddie",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/B-Eddie/maichan.git",
+    "directory": "client"
+  },
+  "bugs": {
+    "url": "https://github.com/B-Eddie/maichan/issues"
+  },
+  "homepage": "https://github.com/B-Eddie/maichan#readme",
+  "files": [
+    "index.html",
+    "vite.config.js",
+    "eslint.config.js",
+    "public",
+    "src"
+  ],
   "dependencies": {
     "@react-three/drei": "^10.7.7",
     "@react-three/fiber": "^9.6.1",
