@@ -1,6 +1,6 @@
 {
   "name": "maichan",
-  "private": true,
+  "private": false,
   "scripts": {
     "setup": "npm install && npm install --prefix server && npm install --prefix client && node scripts/setup-config.js",
     "dev": "concurrently -k -n server,client -c blue,magenta \"npm run dev --prefix server\" \"wait-on -t 30000 http-get://127.0.0.1:5001/api/config && npm run dev --prefix client\"",

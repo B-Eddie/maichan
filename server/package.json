@@ -1,16 +1,38 @@
 {
-  "name": "server",
-  "version": "1.0.0",
-  "description": "",
+  "name": "maichan-api",
+  "version": "0.1.0",
+  "description": "Maichan API server",
   "main": "index.js",
   "scripts": {
     "dev": "nodemon index.js",
     "start": "node index.js"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "keywords": [
+    "maichan",
+    "beeper",
+    "ai",
+    "inbox"
+  ],
+  "author": "B-Eddie",
+  "license": "MIT",
   "type": "commonjs",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/B-Eddie/maichan.git",
+    "directory": "server"
+  },
+  "bugs": {
+    "url": "https://github.com/B-Eddie/maichan/issues"
+  },
+  "homepage": "https://github.com/B-Eddie/maichan#readme",
+  "files": [
+    "index.js",
+    "calendar.js",
+    "drafts.js",
+    ".env.example",
+    "config.json.example",
+    "nodemon.json"
+  ],
   "dependencies": {
     "axios": "^1.18.0",
     "cors": "^2.8.6",
