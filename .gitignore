@@ -6,3 +6,7 @@ server/config.json
 .DS_Store
 server/.gitignore
 client/.gitignore
+/node_modules/
+/dist/
+/*.tgz
+server/calendar-tokens.json
