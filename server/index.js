@@ -4,7 +4,7 @@ const axios = require("axios");
 const fs = require("fs");
 const path = require("path");
 const { fileURLToPath } = require("url");
-require("dotenv").config();
+const { DATA_DIR } = require("./runtime");
 
 const calendar = require("./calendar");
 const drafts = require("./drafts");
@@ -16,7 +16,7 @@ app.use(express.json());
 // get env variables
 const BEEPER_URL = process.env.BEEPER_BASE_URL;
 const BEEPER_TOKEN = process.env.BEEPER_ACCESS_TOKEN;
-const CONFIG_PATH = path.join(__dirname, "config.json");
+const CONFIG_PATH = path.join(DATA_DIR, "config.json");
 
 const DEFAULT_CONFIG = {
   watchedChats: [],
@@ -42,7 +42,8 @@ function loadConfig() {
 }
 
 function saveConfig(config) {
-  fs.writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2));
+  fs.mkdirSync(DATA_DIR, { recursive: true, mode: 0o700 });
+  fs.writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2), { mode: 0o600 });
 }
 
 function sleep(ms) {
@@ -904,10 +905,9 @@ async function monitorWatchedChats() {
   }
 }
 
-// tick chat monitoring every something seconds
-setInterval(monitorWatchedChats, 2000);
-
-const CLIENT_DIST = path.join(__dirname, "../client/dist");
+const CLIENT_DIST = fs.existsSync(path.join(__dirname, "../dist/index.html"))
+  ? path.join(__dirname, "../dist")
+  : path.join(__dirname, "../client/dist");
 if (fs.existsSync(path.join(CLIENT_DIST, "index.html"))) {
   app.use(express.static(CLIENT_DIST));
   app.get(/^\/(?!api).*/, (_req, res) => {
@@ -915,9 +915,29 @@ if (fs.existsSync(path.join(CLIENT_DIST, "index.html"))) {
   });
 }
 
-const PORT = process.env.PORT || 5001;
-app.listen(PORT, () => {
-  const hasUi = fs.existsSync(path.join(CLIENT_DIST, "index.html"));
-  console.log(`agent on http://localhost:${PORT}`);
-  if (hasUi) console.log(`dashboard at http://localhost:${PORT}`);
-});
+function startServer({ port = Number(process.env.PORT || 5001) } = {}) {
+  return new Promise((resolve, reject) => {
+    const server = app.listen(port, "127.0.0.1");
+    server.once("error", reject);
+    server.once("listening", () => {
+      const timer = setInterval(() => {
+        monitorWatchedChats().catch((error) => {
+          console.error("Could not check watched chats:", error.message);
+        });
+      }, 2000);
+      server.once("close", () => clearInterval(timer));
+      resolve(server);
+    });
+  });
+}
+
+module.exports = { startServer };
+
+if (require.main === module) {
+  startServer().then((server) => {
+    console.log(`Maichan is running at http://127.0.0.1:${server.address().port}`);
+  }).catch((error) => {
+    console.error(`Could not start Maichan: ${error.message}`);
+    process.exitCode = 1;
+  });
+}

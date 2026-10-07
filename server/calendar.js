@@ -2,7 +2,8 @@ const fs = require("fs");
 const path = require("path");
 const { google } = require("googleapis");
 
-const TOKEN_PATH = path.join(__dirname, "calendar-tokens.json"); // calendar token exist here if user authorized
+const { DATA_DIR } = require("./runtime");
+const TOKEN_PATH = path.join(DATA_DIR, "calendar-tokens.json");
 const SCOPES = ["https://www.googleapis.com/auth/calendar"];
 const TIMEZONE = process.env.TZ || "America/Toronto";
 
@@ -70,7 +71,8 @@ function loadTokens() {
 }
 
 function saveTokens(tokens) {
-  fs.writeFileSync(TOKEN_PATH, JSON.stringify(tokens, null, 2));
+  fs.mkdirSync(DATA_DIR, { recursive: true, mode: 0o700 });
+  fs.writeFileSync(TOKEN_PATH, JSON.stringify(tokens, null, 2), { mode: 0o600 });
 }
 
 function getOAuthClient() {
