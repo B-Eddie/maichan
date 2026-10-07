@@ -2,13 +2,71 @@
   "name": "maichan",
   "private": false,
   "scripts": {
-    "setup": "npm install && npm install --prefix server && npm install --prefix client && node scripts/setup-config.js",
-    "dev": "concurrently -k -n server,client -c blue,magenta \"npm run dev --prefix server\" \"wait-on -t 30000 http-get://127.0.0.1:5001/api/config && npm run dev --prefix client\"",
-    "build": "npm run build --prefix client",
-    "start": "npm run build && npm run start --prefix server"
+    "setup": "node bin/maichan.js setup",
+    "dev": "concurrently -k -n server,client -c blue,magenta \"node --watch bin/maichan.js start --no-open\" \"wait-on -t 30000 http-get://127.0.0.1:5001/api/config && vite client\"",
+    "build": "vite build client --outDir ../dist --emptyOutDir",
+    "start": "node bin/maichan.js start",
+    "prepack": "npm run build",
+    "test": "node --test test/*.test.js",
+    "pretest": "npm run build",
+    "verify:package": "node scripts/verify-package.js"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@react-three/drei": "^10.7.7",
+    "@react-three/fiber": "^9.6.1",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.1",
     "concurrently": "^9.1.2",
+    "eslint": "^10.3.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "eslint-plugin-react-refresh": "^0.5.2",
+    "globals": "^17.6.0",
+    "react": "^19.2.6",
+    "react-dom": "^19.2.6",
+    "three": "^0.184.0",
+    "vite": "^8.0.12",
     "wait-on": "^8.0.1"
+  },
+  "version": "0.2.0",
+  "description": "An AI companion for Beeper chats. Run npx maichan for guided setup and a local dashboard.",
+  "bin": {
+    "maichan": "bin/maichan.js"
+  },
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "license": "MIT",
+  "author": "B-Eddie",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/B-Eddie/maichan.git"
+  },
+  "homepage": "https://github.com/B-Eddie/maichan#readme",
+  "bugs": {
+    "url": "https://github.com/B-Eddie/maichan/issues"
+  },
+  "keywords": [
+    "maichan",
+    "beeper",
+    "ai",
+    "chat",
+    "cli"
+  ],
+  "files": [
+    "bin/",
+    "lib/",
+    "server/*.js",
+    "server/config.json.example",
+    "dist/"
+  ],
+  "dependencies": {
+    "@inquirer/prompts": "^7.10.1",
+    "axios": "^1.18.0",
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "googleapis": "^173.0.0"
   }
 }
